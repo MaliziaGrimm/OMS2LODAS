@@ -1,0 +1,250 @@
+# OMS2LODASV03a
+# Tool zum Import von Abrechnungsstammdaten aus OMS (regiocom|snt) nach Lodas
+
+from tkinter import *
+import os, sys, logging, time 
+from staatsang import staatkey
+from shutil import copyfile
+
+def konvert():
+
+  zaehlerfehler = 0
+  zaehlerdatensatz = 0
+  zaehlerwarning = 0
+  # Prüfung ob Quelldatei vorhanden und Abbruch falls nicht
+  if os.path.exists("daten\\omsexport.txt"):
+    pass
+  else:
+    a = "Quelldatei omsexport.txt im Verzeichnis\n\\daten\\ ist nicht vorhanden!"
+    hfarbe = "#FF0000"
+    tfarbe = "#000000"
+    label1["bg"]=hfarbe
+    label1["fg"]=tfarbe
+    label1["font"]="Verdane 14"
+    label1["height"]=5
+    label1["width"]=40
+    label1["text"]=str(a)
+    return
+    
+# Logbuchdatei erstellen
+  ZielDatei = os.path.join(time.strftime('%Y%m%d_%H%M%S_'))
+  Datum = os.path.join(time.strftime('%Y%m%d_'))
+
+  logging.basicConfig(
+    filename = ("logbuch\\protokoll.log"),
+    level = logging.INFO,
+    style = "{",
+    format = "{asctime} [{levelname:8}] {message}",
+    datefmt = "%d.%m.%Y %H:%M:%S")
+
+  # Quelldatei öffnen 
+  filequelle=open("daten\\omsexport.txt","r", encoding='utf-8')
+  logging.info("Datenquelle geöffnet für Kopfdaten")
+
+  #Beschreibung der Felder aus der Quelldatei
+  #stelle 1 = BNR; stelle 2 = Mandantenr; stelle 3 = MM/JJJJ Abrechnungsmonat; stelle 4 = PNR; stelle 5 = Geschlecht;
+  #stelle 6 = Name; stelle 7 = Vorname; stelle 8 = strasse; stelle 9 = Hausnummer; stelle 10 = Strasse_Zusatz; stelle 11 = PLZ;
+  #stelle 12 = Ort; stelle 13 = Geburt; stelle 14 = staatsang.; stelle 15 = tech Eintritt; stelle 16 = WochenAZ; stelle 17 = Stellenbeschreibung;
+  #stelle 18 = Kostenstelle stelle 19 = Steuer-ID stelle 20 = RV Nummer 
+
+  for x in filequelle:
+      stelle1,stelle2,stelle3,stelle4,stelle5,stelle6,stelle7,stelle8,stelle9,stelle10,stelle11,stelle12,stelle13,stelle14,stelle15,stelle16,stelle17,stelle18,stelle19,stelle20=x.split("|")
+      break
+
+  filequelle.close()
+  logging.info("Datenquelle gelesen und geschlossen")
+
+  # Zieldatei öffnen
+  fileziel=open("daten\\"+ZielDatei+stelle2+"_Lodas_import.txt","w")
+  logging.info("Zieldatei geöffnet")
+
+  # Zuordnung und Anlage von Kopfdaten
+  mmstammdatengultigab = stelle3[0]+stelle3[1]
+  jjstammdatengultigab = stelle3[3]+stelle3[4]+stelle3[5]+stelle3[6]
+  beraternummer = stelle1
+  mandantennummer = stelle2
+
+  logging.info("Kopfdaten im DATEV Format für Lodas in Zieldatei schreiben")
+
+  # schreiben in Lodas Importdatei
+  fileziel.write("[Allgemein]\nZiel=LODAS\nVersion_SST=1.0\n* Version_DB=10.7\nBeraterNr=")
+  fileziel.write(beraternummer)
+  fileziel.write("\nMandantenNr=")
+  fileziel.write(mandantennummer)
+  fileziel.write("\n* Datumsformat=TT/MM/JJJJ\nStringbegrenzer='\n* StammdatenGueltigAb=01/")
+  fileziel.write(mmstammdatengultigab)
+  fileziel.write("/")
+  fileziel.write(jjstammdatengultigab)
+  fileziel.write("\n\n* LEGENDE:\n* Datei erzeugt mit Tool OMS2LODAS\n* AP: Andreé Rosenkranz; andree.rosenkranz@datev.de\n\n* Satzbeschreibungen zur Anlage von Stammdaten für Mitarbeiter\n\n")
+  logging.info("Kopfdaten im DATEV Format für Lodas in Zieldatei geschrieben")
+
+  # schreiben der Satzarten
+  logging.info("Satzarten im DATEV Format für Lodas in Zieldatei schreiben")
+  fileziel.write("[Satzbeschreibung]")
+  fileziel.write("\n10;u_lod_psd_beschaeftigung;pnr#psd;eintrittdatum#psd;austrittdatum#psd;arbeitsverhaeltnis#psd;schriftl_befristung#psd;datum_urspr_befr#psd;abschl_befr_arbvertr#psd;verl_befr_arbvertr#psd;befr_gr_2_monate#psd;")
+  fileziel.write("\n11;u_lod_psd_mitarbeiter;pnr#psd;duevo_familienname#psd;duevo_vorname#psd;adresse_strassenname#psd;adresse_strasse_nr#psd;adresse_ort#psd;adresse_plz#psd;staatsangehoerigkeit#psd;geburtsdatum_ttmmjj#psd;geschlecht#psd;familienstand#psd;sozialversicherung_nr#psd;adresse_anschriftenzusatz#psd;")
+  fileziel.write("\n12;u_lod_psd_taetigkeit;pnr#psd;berufsbezeichnung#psd;stammkostenstelle#psd;")
+  fileziel.write("\n13;u_lod_psd_arbeitszeit_regelm;pnr#psd;az_wtl_indiv#psd;")
+  fileziel.write("\n14;u_lod_psd_steuer;pnr#psd;identifikationsnummer#psd;")
+  fileziel.write("\n\n")
+  fileziel.write("[Stammdaten]")
+  fileziel.write("\n* Stammdaten zur Anlage von Mitarbeitern\n\n")
+  logging.info("Satzarten im DATEV Format für Lodas in Zieldatei geschrieben")
+
+  # Quelldatei öffnen
+  filequelle=open("daten\\omsexport.txt","r", encoding='utf-8')
+  logging.info("Datenquelle geöffnet")
+  logging.info("Beginne schreiben der Datensätze in Zieldatei")
+
+  #Beschreibung der Felder aus der Quelldatei
+  #stelle 1 = BNR*; stelle 2 = Mandantenr*; stelle 3 = MM/JJJJ Abrechnungsmonat*; stelle 4 = PNR; stelle 5 = Geschlecht*;
+  #stelle 6 = Name*; stelle 7 = Vorname*; stelle 8 = strasse*; stelle 9 = Hausnummer*; stelle 10 = Strasse_Zusatz*; stelle 11 = PLZ*;
+  #stelle 12 = Ort*; stelle 13 = Geburt*; stelle 14 = staatsang.*; stelle 15 = tech Eintritt*; stelle 16 = WochenAZ*; stelle 17 = Stellenbeschreibung*;
+  #stelle 18 = Kostenstelle; stelle 19 = Steuer-ID; stelle 20 = RV Nummer 
+
+  for x in filequelle:
+      stelle1,stelle2,stelle3,stelle4,stelle5,stelle6,stelle7,stelle8,stelle9,stelle10,stelle11,stelle12,stelle13,stelle14,stelle15,stelle16,stelle17,stelle18,stelle19,stelle20=x.split("|")
+      stelle20 = (stelle20.strip())
+      # Wenn PNR falsch ist, dann keinen Datensatz schreiben
+      if stelle4 < "1" or stelle4 > "99999":
+        stelle4fehler=stelle4
+        stelle4="0"
+      # Zuordnung Geschlecht - auch d/divers  
+      if stelle5 == ("w" or "W"):
+        stelle5 = "1"
+      elif stelle5 == ("m" or "M"):
+        stelle5 = "0"
+      elif stelle5 == ("d" or "D"):
+        stelle5 = "2"
+      else:
+        stelle5 = ""
+        logging.warning("PNR:\x20"+stelle4+"__\x20__Das Geschlecht ist in den Quelldaten nicht mit m,M,w, W,d oder D angegeben. Das Geschlecht wir auf leer gesetzt.")
+        zaehlerwarning = zaehlerwarning+1
+      # Zuordnung Staatsangehörigkeit - Zuordnung DATEV Schlüssel Staatsangehörigkeit über staatsang.py - Neu am 25.3.2019
+      skey = staatkey
+      if stelle14 in skey:
+        stelle14=(skey[stelle14])
+      else:
+        stelle14 =""
+        logging.warning("PNR:\x20"+stelle4+"__\x20__Die Staatsangehörigkeit ist nicht im Dictonary -staatsang.py- angegeben. Das Feld Staatsangehörigkeit wird auf leer gesetzt.") 
+        zaehlerwarning = zaehlerwarning+1
+      # Ende Neu 25.3.2019
+      # Eintrittsdatum (stelle15) auf korrekte Länge prüfen - Fehler erzeugen, wenn nicht 10 stellig 
+      stelle15fehler = len(stelle15)
+      if stelle15fehler != 10:
+        stelle15 = "0"
+      else:
+        pass
+      # Geburtsdatum (stelle13) auf korrekte Länge prüfen - Fehler erzeugen, wenn nicht 10 stellig 
+      stelle13fehler = len(stelle13)
+      if stelle13fehler != 10:
+        stelle13 = "0"
+      else:
+        pass
+      #prüft ob Personalnummer, Geburtsdatum oder Eintritt 0 ist. Gibt Fehler aus. 
+      if stelle4 != ("0") and stelle13 != ("0") and stelle15 != ("0"):
+        logging.info("Datensatz geschrieben: PNR "+stelle4+"__Eintritt:__"+stelle15)
+        fileziel.write("\n10;"+stelle4+";"+stelle15+";;;;;;;")
+        fileziel.write("\n11;"+stelle4+";'"+stelle6+"';'"+stelle7+"';'"+stelle8+"';'"+stelle9+"';'"+stelle12+"';"+stelle11+";"+stelle14+";"+stelle13+";"+stelle5+";;"+stelle20+";'"+stelle10+"';")
+        fileziel.write("\n12;"+stelle4+";'"+stelle17+"';"+stelle18+";")
+        fileziel.write("\n13;"+stelle4+";"+stelle16+";")
+        fileziel.write("\n14;"+stelle4+";'"+stelle19+"';")
+        zaehlerdatensatz = zaehlerdatensatz+1
+      elif stelle4 == "0":
+        logging.error("Das Feld Personalnummer ist ohne Inhalt oder eine 0 oder mit "+stelle4fehler+" in der Exportdatei, es wurde kein Datensatz geschrieben.")
+        zaehlerfehler = zaehlerfehler+1
+      elif stelle13 == "0":
+        logging.error("PNR:_"+stelle4+"__\x20__Das Feld Geburtsdatum ist nicht jorrekt mit TT.MM.JJJJ gefüllt, kein Datensatz geschrieben.")
+        zaehlerfehler = zaehlerfehler+1
+      elif stelle15 == "0":
+        zaehlerfehler = zaehlerfehler+1
+        logging.error("PNR:_"+stelle4+"__\x20__Das Feld Eintrittsdatum ist nicht korrekt mit TT.MM.JJJJ gefüllt, kein Datensatz geschrieben.")
+      else:
+        zaehlerfehler = zaehlerfehler+1
+        logging.error("Das ist ein undefinierter Fehler - bei Bedarf an den Entwickler wenden")
+
+  logging.info("Datenkonvertierung beendet")
+
+  #Dateien schließen	
+  filequelle.close()
+  fileziel.close()
+  logging.info("Datenquelle und Ziel geschlossen.")
+  
+  #Quelldatei sichern, umbennen mit Zeitstempel
+  os.rename("daten\\omsexport.txt","daten\\"+(ZielDatei)+(stelle2)+"omsexport.sic")
+  logging.info("Datenquelle in "+(ZielDatei)+(stelle2)+"omsexport.sic umbenannt.")
+  #Logdatei schliessen 
+  logging.info("logbuch schließen, kopieren und mit Zeitstempel speichern")
+  logging.shutdown()
+  copyfile('logbuch/protokoll.log', 'logbuch/aktuelleslogbuch.log' )
+  #Logdatei umbennen mit Zeitstempel 
+  os.rename("logbuch\\protokoll.log", "logbuch\\"+(ZielDatei+stelle2)+"protokoll.log" )
+
+  b = "Es wurden "+str(zaehlerdatensatz)+" Datensätze geschrieben.\nEs wurden "+str(zaehlerwarning)+" Warnungen gefunden.\nEs wurden "+str(zaehlerfehler)+" Fehler gefunden!\n Bitte prüfe das Logbuch im Verzeichnis logbuch!"
+  hfarbe = "#00FF00"
+  tfarbe = "#000000"
+  label1["bg"]=hfarbe
+  label1["fg"]=tfarbe
+  label1["font"]="Verdane 14"
+  label1["height"]=5
+  label1["width"]=40
+  label1["text"]=str(b)
+  return
+
+def leer():
+    return
+
+def exit():
+    root.destroy()
+    return
+
+def quellcheck():
+    if os.path.exists("daten\\omsexport.txt"):
+    # Datei ist vorhanden
+        a = "OK!\nQuelldatei omsexport.txt im Verzeichnis \n\\daten\\ ist vorhanden"
+        hfarbe = "#00FF00"
+        tfarbe = "#000000"
+    else:
+    # Datei ist nicht vorhanden
+        a = "Quelldatei omsexport.txt im Verzeichnis \n\\daten\\ ist nicht vorhanden!"
+        hfarbe = "#FF0000"
+        tfarbe = "#000000"
+    label1["bg"]=hfarbe
+    label1["fg"]=tfarbe
+    label1["font"]="Verdane 14"
+    label1["height"]=5
+    label1["width"]=40
+    label1["text"]=str(a)
+    return
+
+root = Tk()
+
+# Screen definieren
+width  = 1366
+height = 768
+root.wm_geometry("%dx%d"  % (width,height))
+
+#Bild DATEV laden
+img1 = PhotoImage (file="format/image001.png")
+#label erstellen
+label2 = Label(root, image=img1)
+label1 = Label(root, text = "Tool OMS2LODAS", width=30, height=3, font="Verdana 12") 
+#Navigation als button definieren
+button1 = Button(root, text="Anleitung", width=30, height=3, font="Verdana 12", command= lambda:os.system('v03a_Handbuch_OMS2LODAS.pdf'), bg="#E6E6E6")
+button2 = Button(root, text="Quelldatei vorhanden?", width=30, height=3, font="Verdana 12", command=quellcheck, bg="#E6E6E6")
+button3 = Button(root, text="Daten Konvertierung", width=30, height=3, font="Verdana 12", command=konvert, bg="#E6E6E6")
+button4 = Button(root, text="akt. Fehlerprotokoll überprüfen", width=30, height=3, font="Verdana 12", command= lambda:os.system('logbuch\\aktuelleslogbuch.log'), bg="#E6E6E6")
+button5 = Button(root, text="Exit", width=30, height=3, font="Verdana 12", command=exit, bg="#E6E6E6")
+
+root.title("OMS2LODAS V0.3a")
+
+label2.pack(side=TOP, pady=20)
+button1.pack(side=TOP,pady=2)
+button2.pack(side=TOP,pady=2)
+button3.pack(side=TOP,pady=2)
+button4.pack(side=TOP,pady=2)
+button5.pack(side=TOP,pady=2)
+label1.pack(pady=2)
+root.iconbitmap("format/oms2lodas.ico")
+
+root.mainloop()
